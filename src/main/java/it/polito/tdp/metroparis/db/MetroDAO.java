@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import com.javadocmd.simplelatlng.LatLng;
 
@@ -69,6 +70,96 @@ public class MetroDAO {
 		return linee;
 	}
 
+	public boolean isConnesse(Fermata partenza, Fermata arrivo) {
+		String sql = " SELECT COUNT(*) AS c "
+				+ " FROM connessione "
+				+ " WHERE id_stazP = ? AND id_stazA = ? ";
+		
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			
+			st.setInt(1, partenza.getIdFermata());
+			st.setInt(2, arrivo.getIdFermata());
+			
+			ResultSet rs = st.executeQuery();
+
+			rs.first();
+			
+			int c = rs.getInt("c");
+
+			st.close();
+			conn.close();
+			
+			return c != 0;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Errore di connessione al Database.");
+		}
+		
+	}
+
+	public List<Fermata> trovaCollegate(Fermata partenza, Map<Integer, Fermata> fermateIdMap) {
+		String sql = "SELECT id_stazA "
+				+ "FROM connessione "
+				+ "WHERE id_stazP = ? ";
+		
+		List<Fermata> collegate = new ArrayList<Fermata>();
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			
+			st.setInt(1, partenza.getIdFermata());
+			
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				Fermata f = fermateIdMap.get(rs.getInt("id_stazA"));
+				collegate.add(f);
+			}
+
+			st.close();
+			conn.close();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Errore di connessione al Database.");
+		}
+
+		return collegate;
+	}
 	
+	public List<Connessione> getAllCoppie(Map<Integer, Fermata> fermateIdMap) {
+
+		final String sql = "SELECT DISTINCT * FROM connessione ";
+		List<Connessione> coppie = new ArrayList<Connessione>();
+
+		try {
+			Connection conn = DBConnect.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+
+			while (rs.next()) {
+				Fermata stazP = fermateIdMap.get(rs.getInt("id_stazP"));
+				Fermata stazA = fermateIdMap.get(rs.getInt("id_stazA"));
+
+				Connessione c = new Connessione(rs.getInt("id_connessione"), null, stazP, stazA);
+				
+				coppie.add(c);
+			}
+
+			st.close();
+			conn.close();
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Errore di connessione al Database.");
+		}
+
+		return coppie;
+	}
+
 
 }
